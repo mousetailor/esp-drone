@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/home/vxser/Dev/esp/controller/build/CMakeFiles/bootloader
+/home/vxser/Dev/esp/controller/build/CMakeFiles/bootloader.rule
+/home/vxser/Dev/esp/controller/build/CMakeFiles/bootloader-complete.rule
+/home/vxser/Dev/esp/controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/home/vxser/Dev/esp/controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/home/vxser/Dev/esp/controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/home/vxser/Dev/esp/controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/home/vxser/Dev/esp/controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/home/vxser/Dev/esp/controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/home/vxser/Dev/esp/controller/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule

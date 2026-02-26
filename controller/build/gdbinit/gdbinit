@@ -1,0 +1,2 @@
+source /home/vxser/Dev/esp/controller/build/gdbinit/symbols
+source /home/vxser/Dev/esp/controller/build/gdbinit/connect

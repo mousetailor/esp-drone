@@ -50,7 +50,7 @@ static const char *TAG = "CTRL";
 /* !!!  CHANGE THIS to your drone ESP32's MAC address  !!!
  * To find it: flash drone firmware, run `idf.py monitor`,
  * look for the line "Drone MAC: XX:XX:XX:XX:XX:XX"        */
-static uint8_t drone_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+static uint8_t drone_mac[6] = {0x88, 0x57, 0x21, 0xAC, 0x69, 0xE8};
 
 /* =========================================================
  *  PACKET DEFINITIONS

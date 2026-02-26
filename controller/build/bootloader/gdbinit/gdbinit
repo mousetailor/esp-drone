@@ -1,0 +1,2 @@
+source /home/vxser/Dev/esp/controller/build/bootloader/gdbinit/symbols
+source /home/vxser/Dev/esp/controller/build/bootloader/gdbinit/connect

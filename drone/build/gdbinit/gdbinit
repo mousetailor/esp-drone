@@ -1,0 +1,2 @@
+source /home/vxser/Dev/esp/drone/build/gdbinit/symbols
+source /home/vxser/Dev/esp/drone/build/gdbinit/connect

@@ -114,7 +114,7 @@ static const char *TAG = "DRONE";
 /* !!!  CHANGE THIS to your controller ESP32's MAC address  !!!
  * Flash the controller, run its monitor, note the MAC.
  * FF:FF:FF:FF:FF:FF = accept from ANY sender (broadcast). */
-static uint8_t controller_mac[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+static uint8_t controller_mac[6] = {0xB0, 0xCB, 0xD8, 0xCD, 0x85, 0x68};
 
 /* =========================================================
  *  PID GAINS — tune these for your specific drone
@@ -170,7 +170,7 @@ typedef struct {
     float integral;
     float prev_error;
     float output;
-} pid_t;
+} pid_state_t;
 
 /* =========================================================
  *  GLOBAL STATE
@@ -226,7 +226,7 @@ static uint8_t compute_checksum(const uint8_t *data, size_t len)
 /* =========================================================
  *  PID HELPERS
  * ========================================================= */
-static void pid_init(pid_t *pid, float kp, float ki, float kd)
+static void pid_init(pid_state_t *pid, float kp, float ki, float kd)
 {
     pid->kp = kp;
     pid->ki = ki;
@@ -236,14 +236,14 @@ static void pid_init(pid_t *pid, float kp, float ki, float kd)
     pid->output     = 0.0f;
 }
 
-static void pid_reset(pid_t *pid)
+static void pid_reset(pid_state_t *pid)
 {
     pid->integral   = 0.0f;
     pid->prev_error = 0.0f;
     pid->output     = 0.0f;
 }
 
-static float pid_compute(pid_t *pid, float setpoint, float measurement, float dt)
+static float pid_compute(pid_state_t *pid, float setpoint, float measurement, float dt)
 {
     float error = setpoint - measurement;
 
@@ -645,7 +645,7 @@ static void imu_task(void *arg)
  *  FLIGHT CONTROL TASK — PID + motor mixing
  * ========================================================= */
 
-static pid_t pid_roll, pid_pitch, pid_yaw;
+static pid_state_t pid_roll, pid_pitch, pid_yaw;
 
 static void flight_control_task(void *arg)
 {
@@ -770,6 +770,68 @@ static void flight_control_task(void *arg)
         } else {
             vTaskDelay(1);
         }
+    }
+}
+
+/* =========================================================
+ *  PASSTHROUGH TASK — motor control WITHOUT IMU
+ *  Used when MPU6050 is not connected. No stabilization,
+ *  just direct throttle to all 4 motors for bench testing.
+ * ========================================================= */
+static void passthrough_task(void *arg)
+{
+    ESP_LOGW(TAG, "Passthrough task started — NO STABILIZATION!");
+    ESP_LOGW(TAG, "Throttle goes directly to all 4 motors equally.");
+    ESP_LOGW(TAG, "DO NOT FLY — this mode is for bench testing only!");
+
+    while (1) {
+        /* --- Check failsafe --- */
+        int64_t now = esp_timer_get_time();
+        int64_t since_last_ctrl = now - last_ctrl_time_us;
+        if (last_ctrl_time_us > 0 &&
+            since_last_ctrl > (int64_t)FAILSAFE_TIMEOUT_MS * 1000) {
+            if (!failsafe_active) {
+                failsafe_active = true;
+                ESP_LOGW(TAG, "FAILSAFE — no signal for %d ms, disarming!",
+                         FAILSAFE_TIMEOUT_MS);
+            }
+        }
+
+        /* --- Read inputs --- */
+        uint16_t thr;
+        uint8_t  armed;
+
+        if (xSemaphoreTake(ctrl_mutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+            thr   = ctrl_throttle;
+            armed = ctrl_armed;
+            xSemaphoreGive(ctrl_mutex);
+        } else {
+            thr = 1000;
+            armed = 0;
+        }
+
+        /* Failsafe overrides arming */
+        if (failsafe_active) {
+            armed = 0;
+        }
+
+        if (!armed || thr <= MOTOR_MIN) {
+            motors_stop();
+            motor_out[0] = motor_out[1] = motor_out[2] = motor_out[3] = MOTOR_MIN;
+        } else {
+            /* Clamp throttle */
+            if (thr < MOTOR_IDLE) thr = MOTOR_IDLE;
+            if (thr > MOTOR_MAX)  thr = MOTOR_MAX;
+
+            /* All 4 motors get equal throttle — no mixing, no PID */
+            motor_out[0] = thr;
+            motor_out[1] = thr;
+            motor_out[2] = thr;
+            motor_out[3] = thr;
+            motors_set(motor_out);
+        }
+
+        vTaskDelay(pdMS_TO_TICKS(20));  /* 50 Hz update rate is fine */
     }
 }
 
@@ -937,8 +999,8 @@ void app_main(void)
         xTaskCreate(imu_task,            "imu",    4096, NULL, 6, NULL);
         xTaskCreate(flight_control_task, "flight", 4096, NULL, 5, NULL);
     } else {
-        ESP_LOGW(TAG, "IMU tasks skipped — running in passthrough mode");
-        /* TODO: could create a simplified passthrough task here */
+        ESP_LOGW(TAG, "IMU not found — starting passthrough mode (NO STABILIZATION)");
+        xTaskCreate(passthrough_task, "passthru", 4096, NULL, 5, NULL);
     }
 
     xTaskCreate(telemetry_task, "telem", 4096, NULL, 3, NULL);
