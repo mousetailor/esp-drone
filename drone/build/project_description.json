@@ -1,7 +1,7 @@
 {
     "version":            "1.2",
     "project_name":       "esp32_drone",
-    "project_version":    "842d58f-dirty",
+    "project_version":    "eeaefec-dirty",
     "project_path":       "/home/vxser/Dev/esp/drone",
     "idf_path":           "/opt/esp-idf",
     "build_dir":          "/home/vxser/Dev/esp/drone/build",

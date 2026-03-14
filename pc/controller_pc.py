@@ -285,7 +285,7 @@ def print_status(throttle, roll, pitch, yaw, armed, tele):
 
 def main():
     # Parse CLI arguments
-    port = "/dev/ttyUSB0"
+    port = "/dev/ttyACM0"
     baud = 115200
 
     args = sys.argv[1:]
@@ -374,24 +374,24 @@ def main():
                     armed ^= 1
 
             elif k == "w":
-                throttle = min(2000, throttle + 20)
+                throttle = min(2000, throttle + 1)
             elif k == "s":
-                throttle = max(1000, throttle - 20)
+                throttle = max(1000, throttle - 1)
 
             elif k == "a":
-                yaw = max(-500, yaw - 50)
+                yaw = max(-30, yaw - 3)
             elif k == "d":
-                yaw = min(500, yaw + 50)
+                yaw = min(30, yaw + 3)
 
             elif k == "i":
-                pitch = min(500, pitch + 50)
+                pitch = min(30, pitch + 3)
             elif k == "k":
-                pitch = max(-500, pitch - 50)
+                pitch = max(-30, pitch - 3)
 
             elif k == "j":
-                roll = max(-500, roll - 50)
+                roll = max(-30, roll - 3)
             elif k == "l":
-                roll = min(500, roll + 50)
+                roll = min(30, roll + 3)
 
             elif k == "c":
                 roll = pitch = yaw = 0
