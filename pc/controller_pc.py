@@ -374,9 +374,9 @@ def main():
                     armed ^= 1
 
             elif k == "w":
-                throttle = min(2000, throttle + 1)
+                throttle = min(2000, throttle + 5)
             elif k == "s":
-                throttle = max(1000, throttle - 1)
+                throttle = max(1000, throttle - 5)
 
             elif k == "a":
                 yaw = max(-30, yaw - 3)
