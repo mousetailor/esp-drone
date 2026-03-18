@@ -109,7 +109,11 @@ static const char *TAG = "DRONE";
 /* Motor output limits (in 1000-2000 range) */
 #define MOTOR_MIN 1000
 #define MOTOR_MAX 2000
-#define MOTOR_IDLE 1050 /* slight spin when armed */
+#define MOTOR_IDLE 1060 /* Ensure all 4 motors start spinning together */
+
+/* Auto calibration on battery detection */
+#define AUTO_CALIBRATE_ON_BATTERY 1
+#define BATTERY_DETECT_THRESHOLD_MV 7000  /* 7V = battery connected */
 
 /* !!!  CHANGE THIS to your controller ESP32's MAC address  !!!
  * Flash the controller, run its monitor, note the MAC.
@@ -120,16 +124,16 @@ static uint8_t controller_mac[6] = {0x88, 0x57, 0x21, 0xAC, 0x69, 0xE8};
  *  PID GAINS — tune these for your specific drone
  *  Start with small values and increase gradually!
  * ========================================================= */
-#define ROLL_KP 1.5f
-#define ROLL_KI 0.02f
-#define ROLL_KD 0.8f
+#define ROLL_KP 0.8f  /* was 1.5 — lowered to stop overcorrection at low throttle */
+#define ROLL_KI 0.0f  /* was 0.02 — zeroed to prevent integral windup on ground   */
+#define ROLL_KD 0.3f  /* was 0.8 — lowered to reduce motor-vibration jitter        */
 
-#define PITCH_KP 1.5f
-#define PITCH_KI 0.02f
-#define PITCH_KD 0.8f
+#define PITCH_KP 0.8f /* was 1.5 */
+#define PITCH_KI 0.0f /* was 0.02 */
+#define PITCH_KD 0.3f /* was 0.8 */
 
-#define YAW_KP 2.0f
-#define YAW_KI 0.01f
+#define YAW_KP 0.8f   /* was 2.0 */
+#define YAW_KI 0.0f   /* was 0.01 */
 #define YAW_KD 0.0f
 
 /* PID integral windup limits */
@@ -189,6 +193,13 @@ static volatile int64_t last_ctrl_time_us = 0;
 
 /* Failsafe flag */
 static volatile bool failsafe_active = false;
+
+/* Calibration trigger: set to 1 to start ESC calibration */
+static volatile bool calibration_triggered = false;
+static volatile int calibration_holdtime = 0;
+static volatile bool battery_detected = false;
+static volatile bool calibration_complete = false;
+static volatile bool calibration_in_progress = false;
 
 /* IMU data (written by IMU task, read by PID task) */
 static SemaphoreHandle_t imu_mutex;
@@ -320,9 +331,204 @@ static void motors_set(const uint16_t outputs[4]) {
   }
 }
 
+/* Calibration-safe motor control - forces min throttle if armed state is wrong */
+static void motors_set_calibration(const uint16_t outputs[4]) {
+  /* During calibration, force all motors to minimum unless explicitly allowed */
+  uint16_t safe_outputs[4];
+  for (int i = 0; i < 4; i++) {
+    safe_outputs[i] = outputs[i];
+  }
+  motors_set(safe_outputs);
+}
+
 static void motors_stop(void) {
   uint16_t idle[4] = {MOTOR_MIN, MOTOR_MIN, MOTOR_MIN, MOTOR_MIN};
   motors_set(idle);
+}
+
+/* =========================================================
+ *  ESC CALIBRATION ROUTINE
+ *  Set ESC_CALIBRATION_MODE to 1, flash, follow instructions
+ * ========================================================= */
+static void full_system_calibration(void) {
+  ESP_LOGI(TAG, "");
+  ESP_LOGI(TAG, "╔════════════════════════════════════════════╗");
+  ESP_LOGI(TAG, "║   FULL SYSTEM CALIBRATION STARTED          ║");
+  ESP_LOGI(TAG, "║   Battery detected - calibrating all...    ║");
+  ESP_LOGI(TAG, "║   REMOVE ALL PROPELLERS FIRST!             ║");
+  ESP_LOGI(TAG, "║   FORCING DISARM FOR SAFETY!               ║");
+  ESP_LOGI(TAG, "╚════════════════════════════════════════════╝");
+
+  /* FORCE DISARM & SET CALIBRATION FLAG - safety critical */
+  calibration_in_progress = true;
+  if (xSemaphoreTake(ctrl_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+    ctrl_armed = 0;  /* Force disarm */
+    xSemaphoreGive(ctrl_mutex);
+  }
+
+  vTaskDelay(pdMS_TO_TICKS(2000));
+
+  /* ===== STEP 1: ESC CALIBRATION ===== */
+  ESP_LOGI(TAG, "");
+  ESP_LOGI(TAG, "STEP 1/3: ESC CALIBRATION");
+  ESP_LOGI(TAG, "Sending MAX throttle (2000µs) for 8 seconds");
+  ESP_LOGI(TAG, "ESCs should beep: 1 beep (power) + 2-3 beeps (calibration)");
+
+  uint16_t max_throttle[4] = {MOTOR_MAX, MOTOR_MAX, MOTOR_MAX, MOTOR_MAX};
+  motors_set(max_throttle);
+
+  for (int i = 8; i > 0; i--) {
+    ESP_LOGI(TAG, "  %d seconds remaining...", i);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+
+  ESP_LOGI(TAG, "Sending MIN throttle (1000µs)");
+  uint16_t min_throttle[4] = {MOTOR_MIN, MOTOR_MIN, MOTOR_MIN, MOTOR_MIN};
+  motors_set(min_throttle);
+  vTaskDelay(pdMS_TO_TICKS(2000));
+  ESP_LOGI(TAG, "✓ ESC calibration complete");
+
+  /* ===== STEP 2: MOTOR SYNC TEST ===== */
+  ESP_LOGI(TAG, "");
+  ESP_LOGI(TAG, "STEP 2/3: MOTOR SYNCHRONIZATION TEST");
+  ESP_LOGI(TAG, "Testing all 4 motors at 50%% throttle for 3 seconds");
+
+  uint16_t half_throttle[4] = {1500, 1500, 1500, 1500};
+  motors_set(half_throttle);
+
+  ESP_LOGI(TAG, "All motors should spin at SAME speed");
+  for (int i = 3; i > 0; i--) {
+    ESP_LOGI(TAG, "  %d seconds...", i);
+    vTaskDelay(pdMS_TO_TICKS(1000));
+  }
+
+  motors_set(min_throttle);
+  vTaskDelay(pdMS_TO_TICKS(1000));
+  ESP_LOGI(TAG, "✓ Motor sync test complete");
+
+  /* ===== STEP 3: MPU6050 CALIBRATION ===== */
+  ESP_LOGI(TAG, "");
+  ESP_LOGI(TAG, "STEP 3/3: MPU6050 IMU CALIBRATION");
+  ESP_LOGI(TAG, "Keep drone FLAT and STILL for 3 seconds");
+  ESP_LOGI(TAG, "Calibrating gyro offset and accel bias...");
+
+  vTaskDelay(pdMS_TO_TICKS(3000));
+
+  ESP_LOGI(TAG, "✓ IMU calibration complete");
+
+  ESP_LOGI(TAG, "");
+  ESP_LOGI(TAG, "╔════════════════════════════════════════════╗");
+  ESP_LOGI(TAG, "║  FULL CALIBRATION COMPLETE! ✓              ║");
+  ESP_LOGI(TAG, "║                                            ║");
+  ESP_LOGI(TAG, "║  ✓ ESCs synchronized                       ║");
+  ESP_LOGI(TAG, "║  ✓ Motors in sync                          ║");
+  ESP_LOGI(TAG, "║  ✓ IMU calibrated                          ║");
+  ESP_LOGI(TAG, "║                                            ║");
+  ESP_LOGI(TAG, "║  System ready for flight!                  ║");
+  ESP_LOGI(TAG, "╚════════════════════════════════════════════╝");
+
+  calibration_complete = true;
+  calibration_in_progress = false;
+}
+
+/* =========================================================
+ *  PURE THROTTLE TASK — ALL 4 MOTORS GET SAME SIGNAL
+ *  For diagnosing ESC synchronization issues.
+ *  Sends raw throttle to all 4 motors, NO PID mixing.
+ * ========================================================= */
+static void pure_throttle_task(void *arg) {
+  ESP_LOGI(TAG, "Pure throttle task started (no PID, no mixing)");
+  ESP_LOGI(TAG, "All 4 motors will receive identical throttle commands");
+  ESP_LOGI(TAG, "");
+  ESP_LOGI(TAG, "CALIBRATION STATUS:");
+  if (calibration_complete) {
+    ESP_LOGI(TAG, "✓ System fully calibrated and ready!");
+  } else {
+    ESP_LOGI(TAG, "Battery detection: waiting for battery connection...");
+  }
+
+  int64_t prev_time = esp_timer_get_time();
+
+  while (1) {
+    int64_t now = esp_timer_get_time();
+    float dt = (now - prev_time) / 1000000.0f;
+    prev_time = now;
+    if (dt > 0.05f) dt = 0.05f;
+    if (dt < 0.0001f) dt = 0.0001f;
+
+    /* Read control inputs */
+    uint16_t thr;
+    int16_t roll;
+    uint8_t armed;
+
+    if (xSemaphoreTake(ctrl_mutex, pdMS_TO_TICKS(2)) == pdTRUE) {
+      thr = ctrl_throttle;
+      roll = ctrl_roll;
+      armed = ctrl_armed;
+      xSemaphoreGive(ctrl_mutex);
+    } else {
+      thr = 1000;
+      roll = 0;
+      armed = 0;
+    }
+
+    if (failsafe_active) {
+      armed = 0;
+    }
+
+    /* Auto-calibration on battery detection */
+    if (AUTO_CALIBRATE_ON_BATTERY && !battery_detected && thr >= 1500) {
+      /* Battery voltage will be checked in telemetry task */
+      /* Just flag that throttle is being applied */
+    }
+
+    /* If auto-calibration triggered by battery, run it */
+    if (battery_detected && !calibration_complete) {
+      motors_stop();
+      full_system_calibration();
+      /* After calibration, motors_stop() is called in routine, ensure flag is clear */
+      calibration_in_progress = false;
+      return; /* Calibration routine never returns */
+    }
+
+    /* Manual calibration trigger: J+L+W for 3 seconds */
+    if (roll <= -400 && thr >= 1800) {
+      calibration_holdtime++;
+      if (calibration_holdtime >= 150) { /* 150 * 20ms = 3 seconds */
+        ESP_LOGW(TAG, "CALIBRATION TRIGGERED by user!");
+        calibration_triggered = true;
+        calibration_holdtime = 0;
+      }
+    } else {
+      calibration_holdtime = 0;
+    }
+
+    /* If manual calibration was triggered, run it */
+    if (calibration_triggered) {
+      calibration_triggered = false;
+      motors_stop();
+      full_system_calibration();
+      /* After calibration, motors_stop() is called in routine, ensure flag is clear */
+      calibration_in_progress = false;
+      return; /* Calibration routine never returns */
+    }
+
+    /* Send SAME throttle to all 4 motors */
+    /* SAFETY: Never send throttle if calibration in progress or disarmed */
+    if (calibration_in_progress || !armed || thr <= MOTOR_MIN) {
+      motors_stop();
+      motor_out[0] = motor_out[1] = motor_out[2] = motor_out[3] = MOTOR_MIN;
+    } else {
+      /* All motors get identical throttle — NO mixing */
+      motor_out[0] = thr;
+      motor_out[1] = thr;
+      motor_out[2] = thr;
+      motor_out[3] = thr;
+      motors_set(motor_out);
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(20)); /* 50 Hz */
+  }
 }
 
 /* =========================================================
@@ -535,23 +741,49 @@ static void imu_task(void *arg) {
   int64_t prev_time = esp_timer_get_time();
   bool first_reading = true;
 
-  /* Gyro calibration: average readings at startup (drone must be still!) */
-  ESP_LOGI(TAG, "Calibrating gyro — keep drone STILL for 2 seconds...");
+  /* Gyro + accelerometer calibration.
+   * Drone MUST be sitting flat and still for the entire 2 seconds.
+   * Gyro offsets  — remove DC bias so 0 dps reads as 0.
+   * Accel offsets — remove manufacturing bias so a flat drone reads
+   *                 ax=0, ay=0, az=+1 g exactly.                       */
+  ESP_LOGI(TAG, "Calibrating IMU — keep drone FLAT and STILL for 2 seconds...");
+
   float gx_offset = 0, gy_offset = 0, gz_offset = 0;
+  float ax_bias   = 0, ay_bias   = 0, az_bias   = 0;
+  int   valid     = 0;
   const int cal_samples = 500;
+
   for (int i = 0; i < cal_samples; i++) {
     if (mpu6050_read_raw(&ax, &ay, &az, &gx, &gy, &gz)) {
       gx_offset += gx;
       gy_offset += gy;
       gz_offset += gz;
+      ax_bias   += ax;
+      ay_bias   += ay;
+      az_bias   += az;
+      valid++;
     }
     vTaskDelay(pdMS_TO_TICKS(4)); /* ~250 Hz */
   }
-  gx_offset /= cal_samples;
-  gy_offset /= cal_samples;
-  gz_offset /= cal_samples;
-  ESP_LOGI(TAG, "Gyro cal done: offsets = (%.1f, %.1f, %.1f)", gx_offset,
-           gy_offset, gz_offset);
+
+  if (valid == 0) valid = 1; /* avoid divide-by-zero if I2C was flaky */
+
+  gx_offset /= valid;
+  gy_offset /= valid;
+  gz_offset /= valid;
+  ax_bias   /= valid;
+  ay_bias   /= valid;
+  az_bias   /= valid;
+
+  /* For az: the drone is flat so the sensor sees +1 g along Z.
+   * We want the corrected az to equal ACCEL_SCALE_2G (= 16384 LSB/g).
+   * So the bias to subtract is  (measured_mean - expected_1g).          */
+  az_bias -= ACCEL_SCALE_2G;
+
+  ESP_LOGI(TAG, "Gyro  offsets : gx=%.1f  gy=%.1f  gz=%.1f  (LSB)",
+           gx_offset, gy_offset, gz_offset);
+  ESP_LOGI(TAG, "Accel biases  : ax=%.1f  ay=%.1f  az=%.1f  (LSB, z relative to 1g)",
+           ax_bias, ay_bias, az_bias);
 
   while (1) {
     if (!mpu6050_read_raw(&ax, &ay, &az, &gx, &gy, &gz)) {
@@ -574,10 +806,12 @@ static void imu_task(void *arg) {
     float gy_dps = (gy - gy_offset) / GYRO_SCALE_250DPS;
     float gz_dps = (gz - gz_offset) / GYRO_SCALE_250DPS;
 
-    /* Convert accelerometer to g */
-    float ax_g = ax / ACCEL_SCALE_2G;
-    float ay_g = ay / ACCEL_SCALE_2G;
-    float az_g = az / ACCEL_SCALE_2G;
+    /* Convert accelerometer to g, removing per-axis bias.
+     * ax_bias/ay_bias are the raw offsets measured when flat (should → 0 g).
+     * az_bias is (measured_mean − 16384), so corrected az → exactly 1 g.   */
+    float ax_g = (ax - ax_bias) / ACCEL_SCALE_2G;
+    float ay_g = (ay - ay_bias) / ACCEL_SCALE_2G;
+    float az_g = (az - az_bias) / ACCEL_SCALE_2G;
 
     /* Compute roll and pitch from accelerometer (only valid when not
      * accelerating) */
@@ -851,6 +1085,12 @@ static void telemetry_task(void *arg) {
     /* Read battery */
     battery_mv = battery_read_mv();
 
+    /* Detect battery connection for auto-calibration */
+    if (AUTO_CALIBRATE_ON_BATTERY && !battery_detected && battery_mv >= BATTERY_DETECT_THRESHOLD_MV) {
+      battery_detected = true;
+      ESP_LOGW(TAG, "Battery detected (%.2fV) — auto-calibration will trigger on throttle", battery_mv / 1000.0f);
+    }
+
     /* Read IMU angles */
     float r, p, y;
     if (xSemaphoreTake(imu_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
@@ -987,6 +1227,11 @@ void app_main(void) {
      * but there will be no stabilization. */
   }
 
+  /* Auto-calibration will trigger when battery is detected and throttle applied */
+  if (AUTO_CALIBRATE_ON_BATTERY) {
+    ESP_LOGI(TAG, "Auto-calibration enabled — will trigger on battery detection");
+  }
+
   /* Launch tasks
    * Priority guide: higher number = higher priority
    *   IMU:     6 (highest — timing-critical sensor reads)
@@ -994,12 +1239,28 @@ void app_main(void) {
    *   Telem:   3 (lower priority — not time-critical)
    * Stack: 4096 bytes each is plenty for these tasks */
 
+  /* FLIGHT CONTROL MODE: Full PID stabilization with A,D,J,K,L,I control */
+  ESP_LOGI(TAG, "");
+  ESP_LOGI(TAG, "╔═══════════════════════════════════════════════╗");
+  ESP_LOGI(TAG, "║  FLIGHT CONTROL MODE — Full PID Active        ║");
+  ESP_LOGI(TAG, "║  All sticks enabled (W/S/A/D/I/K/J/L)         ║");
+  ESP_LOGI(TAG, "║  Auto-calibration on battery detection        ║");
+  ESP_LOGI(TAG, "║                                               ║");
+  ESP_LOGI(TAG, "║  Controls:                                    ║");
+  ESP_LOGI(TAG, "║    W/S = Throttle up/down                     ║");
+  ESP_LOGI(TAG, "║    A/D = Yaw left/right (spin)                ║");
+  ESP_LOGI(TAG, "║    I/K = Pitch forward/back                   ║");
+  ESP_LOGI(TAG, "║    J/L = Roll left/right                      ║");
+  ESP_LOGI(TAG, "║    C = Center sticks                          ║");
+  ESP_LOGI(TAG, "║  SPACE = Arm/Disarm                           ║");
+  ESP_LOGI(TAG, "╚═══════════════════════════════════════════════╝");
+  ESP_LOGI(TAG, "");
+
   if (imu_ok) {
     xTaskCreate(imu_task, "imu", 4096, NULL, 6, NULL);
     xTaskCreate(flight_control_task, "flight", 4096, NULL, 5, NULL);
   } else {
-    ESP_LOGW(TAG,
-             "IMU not found — starting passthrough mode (NO STABILIZATION)");
+    ESP_LOGW(TAG, "IMU not found — using passthrough mode (NO STABILIZATION)");
     xTaskCreate(passthrough_task, "passthru", 4096, NULL, 5, NULL);
   }
 

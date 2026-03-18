@@ -234,19 +234,19 @@ def print_status(throttle, roll, pitch, yaw, armed, tele):
     """Redraw the status display (moves cursor to top)."""
     sys.stdout.write("\033[H")  # cursor to top-left
 
-    armed_str = "\033[1;31m[ARMED]\033[0m" if armed else "\033[1;32m[SAFE] \033[0m"
+    armed_str = "\033[1;31m[ARMED]\033[0m" if armed else "\033[1;32m[SAFE]\033[0m "
 
     lines = [
-        "\033[1;36m╔══════════════════════════════════════════════╗\033[0m",
-        "\033[1;36m║\033[0m   ESP32 Drone — Keyboard Controller          \033[1;36m║\033[0m",
-        "\033[1;36m╠══════════════════════════════════════════════╣\033[0m",
-        f"\033[1;36m║\033[0m  Status: {armed_str}                          \033[1;36m║\033[0m",
-        "\033[1;36m╠══════════════════════════════════════════════╣\033[0m",
-        f"\033[1;36m║\033[0m  Throttle : {throttle:4d}  (W/S ±20)              \033[1;36m║\033[0m",
-        f"\033[1;36m║\033[0m  Roll     : {roll:+5d}  (J/L ±50)              \033[1;36m║\033[0m",
-        f"\033[1;36m║\033[0m  Pitch    : {pitch:+5d}  (I/K ±50)              \033[1;36m║\033[0m",
-        f"\033[1;36m║\033[0m  Yaw      : {yaw:+5d}  (A/D ±50)              \033[1;36m║\033[0m",
-        "\033[1;36m╠══════════════════════════════════════════════╣\033[0m",
+        "\033[1;36m╔════════════════════════════════════════════════╗\033[0m",
+        "\033[1;36m║\033[0m  ESP32 Drone — Keyboard Controller         \033[1;36m║\033[0m",
+        "\033[1;36m╠════════════════════════════════════════════════╣\033[0m",
+        f"\033[1;36m║\033[0m  Status: {armed_str}                        \033[1;36m║\033[0m",
+        "\033[1;36m╠════════════════════════════════════════════════╣\033[0m",
+        f"\033[1;36m║\033[0m  Throttle : {throttle:4d}  (W/S ±20)            \033[1;36m║\033[0m",
+        f"\033[1;36m║\033[0m  Roll     : {roll:+5d}  (J/L ±50)            \033[1;36m║\033[0m",
+        f"\033[1;36m║\033[0m  Pitch    : {pitch:+5d}  (I/K ±50)            \033[1;36m║\033[0m",
+        f"\033[1;36m║\033[0m  Yaw      : {yaw:+5d}  (A/D ±50)            \033[1;36m║\033[0m",
+        "\033[1;36m╠════════════════════════════════════════════════╣\033[0m",
     ]
 
     # Telemetry section
@@ -255,22 +255,22 @@ def print_status(throttle, roll, pitch, yaw, armed, tele):
         drone_armed = "YES" if (tele["flags"] & 0x01) else "NO"
         failsafe = "YES" if (tele["flags"] & 0x02) else "no"
         lines += [
-            f"\033[1;36m║\033[0m  Battery  : {voltage:5.2f} V                       \033[1;36m║\033[0m",
-            f"\033[1;36m║\033[0m  IMU Roll : {tele['roll']:+6.1f}°                     \033[1;36m║\033[0m",
-            f"\033[1;36m║\033[0m  IMU Pitch: {tele['pitch']:+6.1f}°                     \033[1;36m║\033[0m",
-            f"\033[1;36m║\033[0m  IMU Yaw  : {tele['yaw']:+6.1f}°                     \033[1;36m║\033[0m",
-            f"\033[1;36m║\033[0m  D-Armed  : {drone_armed:3s}  Failsafe: {failsafe:3s}        \033[1;36m║\033[0m",
-            f"\033[1;36m║\033[0m  Tele pkts: {tele['count']}                            \033[1;36m║\033[0m",
+            f"\033[1;36m║\033[0m  Battery  : {voltage:5.2f} V                   \033[1;36m║\033[0m",
+            f"\033[1;36m║\033[0m  IMU Roll : {tele['roll']:+6.1f}°              \033[1;36m║\033[0m",
+            f"\033[1;36m║\033[0m  IMU Pitch: {tele['pitch']:+6.1f}°             \033[1;36m║\033[0m",
+            f"\033[1;36m║\033[0m  IMU Yaw  : {tele['yaw']:+6.1f}°               \033[1;36m║\033[0m",
+            f"\033[1;36m║\033[0m  D-Armed  : {drone_armed:3s}  Failsafe: {failsafe:3s}    \033[1;36m║\033[0m",
+            f"\033[1;36m║\033[0m  Tele pkts: {tele['count']}                    \033[1;36m║\033[0m",
         ]
     else:
         lines += [
-            "\033[1;36m║\033[0m  Telemetry: \033[33mwaiting for drone...\033[0m         \033[1;36m║\033[0m",
+            "\033[1;36m║\033[0m  Telemetry: \033[33mwaiting for drone...\033[0m    \033[1;36m║\033[0m",
         ]
 
     lines += [
-        "\033[1;36m╠══════════════════════════════════════════════╣\033[0m",
-        "\033[1;36m║\033[0m  SPACE=arm  C=center  R=reset thr  Q=quit    \033[1;36m║\033[0m",
-        "\033[1;36m╚══════════════════════════════════════════════╝\033[0m",
+        "\033[1;36m╠════════════════════════════════════════════════╣\033[0m",
+        "\033[1;36m║\033[0m  SPACE=arm  C=center  R=reset  Q=quit      \033[1;36m║\033[0m",
+        "\033[1;36m╚════════════════════════════════════════════════╝\033[0m",
         "",  # blank line to clear any leftover text
     ]
 
@@ -374,24 +374,24 @@ def main():
                     armed ^= 1
 
             elif k == "w":
-                throttle = min(2000, throttle + 5)
+                throttle = min(2000, throttle + 20)
             elif k == "s":
-                throttle = max(1000, throttle - 5)
+                throttle = max(1000, throttle - 20)
 
             elif k == "a":
-                yaw = max(-30, yaw - 3)
+                yaw = max(-500, yaw - 50)
             elif k == "d":
-                yaw = min(30, yaw + 3)
+                yaw = min(500, yaw + 50)
 
             elif k == "i":
-                pitch = min(30, pitch + 3)
+                pitch = min(500, pitch + 50)
             elif k == "k":
-                pitch = max(-30, pitch - 3)
+                pitch = max(-500, pitch - 50)
 
             elif k == "j":
-                roll = max(-30, roll - 3)
+                roll = max(-500, roll - 50)
             elif k == "l":
-                roll = min(30, roll + 3)
+                roll = min(500, roll + 50)
 
             elif k == "c":
                 roll = pitch = yaw = 0
@@ -401,6 +401,11 @@ def main():
 
             else:
                 changed = False
+
+            if changed:
+                # Debug output for key presses
+                if k in "wsiakjlcr ":
+                    pass  # Suppress debug for common keys
 
             if changed:
                 pkt = build_ctrl_packet(throttle, roll, pitch, yaw, armed)

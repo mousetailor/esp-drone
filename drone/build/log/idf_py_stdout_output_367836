@@ -1,0 +1,115 @@
+Command: /home/vxser/.espressif/python_env/idf5.5_py3.14_env/bin/python /opt/esp-idf/tools/idf_monitor.py -p /dev/ttyUSB0 -b 115200 --toolchain-prefix xtensa-esp32-elf- --target esp32 --revision 0 /home/vxser/Dev/esp/drone/build/esp32_drone.elf /home/vxser/Dev/esp/drone/build/bootloader/bootloader.elf -m '/home/vxser/.espressif/python_env/idf5.5_py3.14_env/bin/python' '/opt/esp-idf/tools/idf.py' '-p' '/dev/ttyUSB0'
+ets Jul 29 2019 12:21:46
+
+rst:0x1 (POWERON_RESET),boot:0x13 (SPI_FAST_FLASH_BOOT)
+configsip: 0, SPIWP:0xee
+clk_drv:0x00,q_drv:0x00,d_drv:0x00,cs0_drv:0x00,hd_drv:0x00,wp_drv:0x00
+mode:DIO, clock div:2
+load:0x3fff0030,len:6384
+load:0x40078000,len:15916
+load:0x40080400,len:3920
+entry 0x40080644
+[0;32mI (27) boot: ESP-IDF HEAD-HASH-NOTFOUND 2nd stage bootloader[0m
+[0;32mI (27) boot: compile time Feb 26 2026 21:48:11[0m
+[0;32mI (28) boot: Multicore bootloader[0m
+[0;32mI (30) boot: chip revision: v3.1[0m
+[0;32mI (33) boot.esp32: SPI Speed      : 40MHz[0m
+[0;32mI (36) boot.esp32: SPI Mode       : DIO[0m
+[0;32mI (40) boot.esp32: SPI Flash Size : 2MB[0m
+[0;32mI (43) boot: Enabling RNG early entropy source...[0m
+[0;32mI (48) boot: Partition Table:[0m
+[0;32mI (51) boot: ## Label            Usage          Type ST Offset   Length[0m
+[0;32mI (57) boot:  0 nvs              WiFi data        01 02 00009000 00006000[0m
+[0;32mI (63) boot:  1 phy_init         RF data          01 01 0000f000 00001000[0m
+[0;32mI (70) boot:  2 factory          factory app      00 00 00010000 00100000[0m
+[0;32mI (76) boot: End of partition table[0m
+[0;32mI (80) esp_image: segment 0: paddr=00010020 vaddr=3f400020 size=1b100h (110848) map[0m
+[0;32mI (125) esp_image: segment 1: paddr=0002b128 vaddr=3ffb0000 size=03f8ch ( 16268) load[0m
+[0;32mI (131) esp_image: segment 2: paddr=0002f0bc vaddr=40080000 size=00f5ch (  3932) load[0m
+[0;32mI (133) esp_image: segment 3: paddr=00030020 vaddr=400d0020 size=85870h (546928) map[0m
+[0;32mI (323) esp_image: segment 4: paddr=000b5898 vaddr=40080f5c size=175ach ( 95660) load[0m
+[0;32mI (361) esp_image: segment 5: paddr=000cce4c vaddr=50000000 size=00020h (    32) load[0m
+[0;32mI (373) boot: Loaded app from partition at offset 0x10000[0m
+[0;32mI (373) boot: Disabling RNG early entropy source...[0m
+[0;32mI (383) cpu_start: Multicore app[0m
+[0;32mI (392) cpu_start: GPIO 3 and 1 are used as console UART I/O pins[0m
+[0;32mI (392) cpu_start: Pro cpu start user code[0m
+[0;32mI (392) cpu_start: cpu freq: 160000000 Hz[0m
+[0;32mI (394) app_init: Application information:[0m
+[0;32mI (398) app_init: Project name:     esp32_drone[0m
+[0;32mI (402) app_init: App version:      9b93f54-dirty[0m
+[0;32mI (406) app_init: Compile time:     Mar 15 2026 09:53:30[0m
+[0;32mI (411) app_init: ELF file SHA256:  f217f27b9...[0m
+[0;32mI (416) app_init: ESP-IDF:          HEAD-HASH-NOTFOUND[0m
+[0;32mI (420) efuse_init: Min chip rev:     v0.0[0m
+[0;32mI (424) efuse_init: Max chip rev:     v3.99 [0m
+[0;32mI (428) efuse_init: Chip rev:         v3.1[0m
+[0;32mI (432) heap_init: Initializing. RAM available for dynamic allocation:[0m
+[0;32mI (439) heap_init: At 3FFAE6E0 len 00001920 (6 KiB): DRAM[0m
+[0;32mI (444) heap_init: At 3FFB83E8 len 00027C18 (159 KiB): DRAM[0m
+[0;32mI (449) heap_init: At 3FFE0440 len 00003AE0 (14 KiB): D/IRAM[0m
+[0;32mI (454) heap_init: At 3FFE4350 len 0001BCB0 (111 KiB): D/IRAM[0m
+[0;32mI (460) heap_init: At 40098508 len 00007AF8 (30 KiB): IRAM[0m
+[0;32mI (466) spi_flash: detected chip: generic[0m
+[0;32mI (469) spi_flash: flash io: dio[0m
+[0;33mW (472) spi_flash: Detected size(4096k) larger than the size in the binary image header(2048k). Using the size in the binary image header.[0m
+[0;32mI (485) main_task: Started on CPU0[0m
+[0;32mI (495) main_task: Calling app_main()[0m
+[0;32mI (495) DRONE: ╔══════════════════════════════════════╗[0m
+[0;32mI (495) DRONE: ║   ESP32 Drone Flight Controller      ║[0m
+[0;32mI (505) DRONE: ║   IDF 5.5.2                          ║[0m
+[0;32mI (505) DRONE: ╚══════════════════════════════════════╝[0m
+[0;32mI (545) wifi:wifi driver task: 3ffc0068, prio:23, stack:6656, core=0[0m
+[0;32mI (545) wifi:wifi firmware version: ee91c8c[0m
+[0;32mI (545) wifi:wifi certification version: v7.0[0m
+[0;32mI (545) wifi:config NVS flash: enabled[0m
+[0;32mI (545) wifi:config nano formatting: disabled[0m
+[0;32mI (555) wifi:Init data frame dynamic rx buffer num: 32[0m
+[0;32mI (555) wifi:Init static rx mgmt buffer num: 5[0m
+[0;32mI (565) wifi:Init management short buffer num: 32[0m
+[0;32mI (565) wifi:Init dynamic tx buffer num: 32[0m
+[0;32mI (575) wifi:Init static rx buffer size: 1600[0m
+[0;32mI (575) wifi:Init static rx buffer num: 10[0m
+[0;32mI (575) wifi:Init dynamic rx buffer num: 32[0m
+[0;32mI (585) wifi_init: rx ba win: 6[0m
+[0;32mI (585) wifi_init: accept mbox: 6[0m
+[0;32mI (585) wifi_init: tcpip mbox: 32[0m
+[0;32mI (595) wifi_init: udp mbox: 6[0m
+[0;32mI (595) wifi_init: tcp mbox: 6[0m
+[0;32mI (595) wifi_init: tcp tx win: 5760[0m
+[0;32mI (605) wifi_init: tcp rx win: 5760[0m
+[0;32mI (605) wifi_init: tcp mss: 1440[0m
+[0;32mI (605) wifi_init: WiFi IRAM OP enabled[0m
+[0;32mI (615) wifi_init: WiFi RX IRAM OP enabled[0m
+[0;32mI (615) wifi:ifx:0, phymode(new:4, sta nvs: 4 ap nvs: 3)[0m
+[0;32mI (615) DRONE: Long-Range (LR) mode enabled[0m
+[0;32mI (625) phy_init: phy_version 4863,a3a4459,Oct 28 2025,14:30:06[0m
+[0;32mI (715) wifi:mode : sta (b0:cb:d8:cd:85:68)[0m
+[0;32mI (715) wifi:enable tsf[0m
+[0;32mI (715) DRONE: ╔════════════════════════════════════════════╗[0m
+[0;32mI (715) DRONE: ║  Drone MAC: B0:CB:D8:CD:85:68              ║[0m
+[0;32mI (725) DRONE: ║  Put this in controller's drone_mac[]      ║[0m
+[0;32mI (735) DRONE: ╚════════════════════════════════════════════╝[0m
+[0;32mI (745) ESPNOW: espnow [version: 2.0] init[0m
+[0;32mI (745) DRONE: ESP-NOW ready on channel 1[0m
+[0;32mI (755) DRONE: Motors initialized on GPIOs 25, 26, 27, 14[0m
+[0;32mI (755) DRONE: Battery ADC initialized on channel 6[0m
+[0;32mI (795) DRONE: Motors set to minimum — safe to power ESCs now[0m
+[1;31mE (1795) DRONE: MPU6050 not found (WHO_AM_I=0x00, err=ESP_ERR_INVALID_STATE)[0m
+[1;31mE (1795) DRONE: ╔══════════════════════════════════════════════════╗[0m
+[1;31mE (1805) DRONE: ║  MPU6050 not found! Check wiring:               ║[0m
+[1;31mE (1805) DRONE: ║    SDA = GPIO 21    SCL = GPIO 22               ║[0m
+[1;31mE (1815) DRONE: ║    VCC = 3.3V       GND = GND                   ║[0m
+[1;31mE (1825) DRONE: ║    AD0 = GND (for address 0x68)                 ║[0m
+[1;31mE (1825) DRONE: ║  Flight will NOT be stabilized without IMU!     ║[0m
+[1;31mE (1835) DRONE: ╚══════════════════════════════════════════════════╝[0m
+[0;33mW (1845) DRONE: IMU not found — starting passthrough mode (NO STABILIZATION)[0m
+[0;33mW (1855) DRONE: Passthrough task started — NO STABILIZATION![0m
+[0;33mW (1865) DRONE: Throttle goes directly to all 4 motors equally.[0m
+[0;33mW (1865) DRONE: DO NOT FLY — this mode is for bench testing only![0m
+[0;32mI (1875) DRONE: Telemetry task started (every 200 ms)[0m
+[0;32mI (1875) DRONE: ╔══════════════════════════════════════╗[0m
+[0;32mI (1915) DRONE: ║  Drone ready — waiting for commands  ║[0m
+[0;32mI (1915) DRONE: ║  Failsafe timeout:  500 ms            ║[0m
+[0;32mI (1915) DRONE: ╚══════════════════════════════════════╝[0m
+[0;32mI (1925) main_task: Returned from app_main()[0m
